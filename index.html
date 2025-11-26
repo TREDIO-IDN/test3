@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trading App Demo — GitHub-ready</title>
+<style>
+:root{ --bg:#0b0b0c; --panel:#111217; --muted:#9aa0a6; --green:#2ecc71; --red:#e74c3c; }
+html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter,Arial,Helvetica,sans-serif}
+.container{max-width:980px;margin:12px auto;padding:12px;display:grid;grid-template-columns:1fr 360px;gap:12px}
+@media (max-width:900px){ .container{grid-template-columns:1fr;padding:8px} }
+.panel{background:linear-gradient(180deg,#070708 0%, var(--panel) 100%);border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+.small-muted{color:#9aa0a6;font-size:13px}
+.login-card{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh}
+.box{background:#111217;padding:20px;border-radius:12px;width:320px;box-shadow:0 0 20px rgba(0,0,0,0.5)}
+input{width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:none;background:#0b0b0b;color:white;box-sizing:border-box}
+button{width:100%;padding:10px;border-radius:8px;border:none;background:#2ecc71;color:#000;font-weight:700;cursor:pointer}
+.msg{margin-top:10px;color:#e74c3c;font-size:14px;display:none}
+.info{background:#0f1113;padding:12px;border-radius:10px}
+.saldo{font-weight:700;color:var(--green);font-size:16px}
+.hidden{display:none}
+.diag{background:#0b1220;padding:10px;border-radius:8px;margin-top:10px;font-size:13px;color:#cbd5e1}
+.small-btn{background:#334155;color:#fff;padding:8px;border-radius:8px;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-card">
+  <h1 style="margin-bottom:20px;font-size:32px;font-weight:800">TREDIO</h1>
+  <div class="box">
+    <input id="loginUser" placeholder="Username" />
+    <input id="loginPass" placeholder="Password" type="password" />
+    <button id="btnLogin">LOGIN</button>
+    <div id="loginError" class="msg">Username / Password salah!</div>
+
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button id="btnRegister" class="small-btn" style="flex:1;background:#0ea5a3">REGISTER</button>
+      <button id="btnTestApi" class="small-btn" style="flex:1;background:#2563eb">TEST API</button>
+    </div>
+
+    <div id="apiDiag" class="diag hidden"></div>
+  </div>
+</div>
+
+<!-- MAIN APP simplified -->
+<div id="mainApp" class="container hidden">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div>
+        <div style="font-size:14px;color:#ddd">Harga Batubara Premium</div>
+        <a class="small-muted" href="https://wa.me/message/HWGD7LUY5VQIF1" target="_blank" style="text-decoration:none;color:red;font-weight:bold">Deposit / Withdraw</a>
+      </div>
+
+      <div style="text-align:right">
+        <div class="small-muted">Saldo Real:</div>
+        <div class="saldo" id="saldoText">Rp 0</div>
+      </div>
+    </div>
+
+    <div class="info">
+      <div id="userInfo">User: <b>-</b></div>
+      <div id="loginState" style="margin-top:6px;color:#9aa0a6;font-size:13px"></div>
+    </div>
+
+    <div id="diagArea" class="diag hidden"></div>
+  </div>
+
+  <div class="panel">
+    <div style="font-weight:700;margin-bottom:8px">Kontrol Cepat</div>
+    <select id="quickAmount"><option value="">Pilih Nominal Cepat</option><option value="140000">140.000</option><option value="240000">240.000</option></select>
+    <input id="manualAmount" type="number" placeholder="Atau masukkan manual (Rp)" />
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="btnUp" style="flex:1;background:linear-gradient(135deg,var(--green),#27ae60)">⬆ PASANG NAIK</button>
+      <button id="btnDown" style="flex:1;background:linear-gradient(135deg,#e74c3c,#c0392b)">⬇ PASANG TURUN</button>
+    </div>
+    <div id="statusBox" class="diag" style="margin-top:10px">Menunggu transaksi...</div>
+    <button id="btnLogout" class="small-btn" style="margin-top:12px;background:#ef4444">LOGOUT</button>
+  </div>
+</div>
+
+<script>
+// ----------------- CONFIG -----------------
+const API_URL = 'https://script.google.com/macros/s/AKfycbzpc2HyjUbq488CEHHQwtWTr4cpVi_A-tMx07GngWyHcpa1lRcXSuBevaadHkBxvjjX/exec';
+const FETCH_TIMEOUT = 10000; // ms
+
+// ----------------- HELPERS -----------------
+function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT){
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), timeout);
+    fetch(url, options).then(res => { clearTimeout(timer); resolve(res); }).catch(err => { clearTimeout(timer); reject(err); });
+  });
+}
+
+function safePost(payload){
+  // always send JSON and Content-Type header (Apps Script accepts this)
+  return fetchWithTimeout(API_URL, {
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'omit',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(async res => {
+    // network-level ok
+    try {
+      const text = await res.text();
+      // try parse JSON (some CORS misconfigs may return empty body)
+      try { return JSON.parse(text); } catch(e){
+        throw new Error('Invalid JSON response or empty body from server. Response text: ' + text);
+      }
+    } catch(e){ throw e; }
+  });
+}
+
+function showDiag(message){
+  const d = document.getElementById('apiDiag');
+  d.classList.remove('hidden');
+  d.innerText = message;
+}
+
+function hideDiag(){ document.getElementById('apiDiag').classList.add('hidden'); }
+
+function showMessage(elementId, msg, isError = true){
+  const el = document.getElementById(elementId);
+  el.style.display = 'block';
+  el.style.color = isError ? '#f87171' : '#34d399';
+  el.innerText = msg;
+}
+
+function hideMessage(elementId){ document.getElementById(elementId).style.display = 'none'; }
+
+// ----------------- APP STATE -----------------
+let currentUser = null;
+let saldo = 0;
+
+// ----------------- UI refs -----------------
+const btnLogin = document.getElementById('btnLogin');
+const btnRegister = document.getElementById('btnRegister');
+const btnTestApi = document.getElementById('btnTestApi');
+const btnLogout = document.getElementById('btnLogout');
+const btnUp = document.getElementById('btnUp');
+const btnDown = document.getElementById('btnDown');
+
+// ----------------- CORE: API DIAGNOSTIC -----------------
+async function testApi(){
+  hideMessage('loginError'); hideDiag();
+  const diag = document.getElementById('apiDiag'); diag.classList.remove('hidden'); diag.innerText = 'Menguji koneksi ke API...';
+
+  // Try a simple POST with action=poll to check reachability (getUserData without params would error on server)
+  try{
+    const res = await fetchWithTimeout(API_URL, { method: 'GET', mode: 'cors' }, 5000).catch(_=>null);
+    // If GET allowed, server may return HTML (web app) or JSON; we show its presence
+    if(res && (res.status >= 200 && res.status < 400)){
+      diag.innerText = 'API reachable (GET) — status: ' + res.status + '. Jika ini kosong, server memberi respons kosong.';
+      return;
+    }
+  }catch(e){ /* ignore and continue to POST test */ }
+
+  // POST test expecting proper JSON reply for unknown action
+  try{
+    const reply = await safePost({ action: 'ping' });
+    diag.innerText = 'API reachable (POST). Server reply: ' + JSON.stringify(reply);
+    return;
+  }catch(err){
+    // Provide actionable guidance
+    let msg = 'Gagal menghubungi API. Error: ' + (err && err.message ? err.message : String(err)) + '\n\nKemungkinan penyebab: ';
+    msg += '\n - Web App belum dideploy sebagai "Anyone, even anonymous" (deploy ulang di Apps Script).';
+    msg += '\n - CORS: server tidak mengembalikan header CORS untuk domain ini.';
+    msg += '\n - URL salah atau jaringan (offline).';
+    msg += '\n\nLangkah cepat: buka URL API langsung di browser (paste di tab) dan lihat respons; jika meminta login, deploy ulang web app.';
+    diag.innerText = msg;
+    return;
+  }
+}
+
+// ----------------- AUTH -----------------
+async function loginUser(){
+  hideMessage('loginError'); hideDiag();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(!u || !p){ showMessage('loginError','Isi username dan password.'); return; }
+
+  btnLogin.disabled = true; btnLogin.innerText = 'LOADING...';
+  try{
+    const res = await safePost({ action: 'login', username: u, password: p });
+    if(res && res.status === 'sukses'){
+      currentUser = res.username || u;
+      saldo = Number(res.saldo) || 0;
+      localStorage.setItem('tredio_user', currentUser);
+      openApp();
+    } else {
+      showMessage('loginError', res && res.pesan ? res.pesan : 'Login gagal.');
+    }
+  }catch(err){
+    // Show friendly, actionable error
+    showMessage('loginError', 'Gagal menghubungi server: ' + (err.message || err));
+    showDiag('Detail: ' + (err.stack || err.message || err));
+  } finally { btnLogin.disabled = false; btnLogin.innerText = 'LOGIN'; }
+}
+
+async function registerUser(){
+  hideMessage('loginError'); hideDiag();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(!u || !p){ showMessage('loginError','Isi username dan password.'); return; }
+
+  btnRegister.disabled = true; btnRegister.innerText = 'LOADING...';
+  try{
+    const res = await safePost({ action: 'register', username: u, password: p });
+    showMessage('loginError', res && res.pesan ? res.pesan : 'Selesai.', false);
+  }catch(err){ showMessage('loginError','Gagal menghubungi server: ' + (err.message || err)); showDiag(err.stack || err.message || err); }
+  finally{ btnRegister.disabled = false; btnRegister.innerText = 'REGISTER'; }
+}
+
+// ----------------- APP UI -----------------
+function openApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('userInfo').innerHTML = 'User: <b>' + currentUser + '</b>';
+  document.getElementById('saldoText').innerText = 'Rp ' + Number(saldo).toLocaleString('id-ID');
+  document.getElementById('loginState').innerText = 'Logged in via API';
+  startPolling();
+}
+
+function logout(){
+  try{ localStorage.removeItem('tredio_user'); }catch(e){}
+  stopPolling();
+  currentUser = null; saldo = 0;
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ----------------- POLLING -----------------
+let pollId = null;
+function startPolling(){ stopPolling(); pollId = setInterval(refreshSaldo, 3000); }
+function stopPolling(){ if(pollId){ clearInterval(pollId); pollId = null; } }
+
+async function refreshSaldo(){
+  if(!currentUser) return;
+  try{
+    const res = await safePost({ action: 'getUserData', username: currentUser });
+    if(res && res.status === 'sukses'){
+      const newSaldo = Number(res.saldo) || 0;
+      if(newSaldo !== saldo){ saldo = newSaldo; document.getElementById('saldoText').innerText = 'Rp ' + saldo.toLocaleString('id-ID'); }
+    }
+  }catch(err){
+    // don't flood UI with errors — show diag once
+    console.warn('Polling error', err);
+  }
+}
+
+// ----------------- TRADING (simplified) -----------------
+async function placeBet(direction){
+  if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
+  const q = Number(document.getElementById('quickAmount').value || 0);
+  const m = Number(document.getElementById('manualAmount').value || 0);
+  const amt = m>0?m:(q>0?q:0);
+  if(!amt){ alert('Nominal belum dipilih'); return; }
+  if(amt > saldo){ alert('Saldo tidak cukup'); return; }
+
+  // For demo: always subtract amount and update server
+  saldo -= amt;
+  document.getElementById('saldoText').innerText = 'Rp ' + saldo.toLocaleString('id-ID');
+
+  try{
+    const res = await safePost({ action: 'updateSaldo', username: currentUser, saldo: saldo });
+    if(!(res && res.status === 'sukses')){
+      showDiag('Update server gagal: ' + JSON.stringify(res));
+    }
+  }catch(err){ showDiag('Gagal update server: ' + (err.message||err)); }
+}
+
+// ----------------- EVENT BINDINGS -----------------
+btnLogin.addEventListener('click', loginUser);
+btnRegister.addEventListener('click', registerUser);
+btnTestApi.addEventListener('click', testApi);
+btnLogout.addEventListener('click', logout);
+document.getElementById('btnUp').addEventListener('click', ()=>placeBet('naik'));
+document.getElementById('btnDown').addEventListener('click', ()=>placeBet('turun'));
+
+// ----------------- AUTO LOGIN -----------------
+(async function(){
+  try{
+    const saved = localStorage.getItem('tredio_user');
+    if(saved){
+      // try to fetch user data and auto open
+      currentUser = saved;
+      try{
+        const res = await safePost({ action: 'getUserData', username: currentUser });
+        if(res && res.status === 'sukses'){ saldo = Number(res.saldo)||0; openApp(); }
+        else { localStorage.removeItem('tredio_user'); }
+      }catch(e){ console.warn('Auto-login failed', e); }
+    }
+  }catch(e){/* ignore localStorage errors */}
+})();
+
+</script>
+</body>
+</html>
