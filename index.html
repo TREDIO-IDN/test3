@@ -188,11 +188,9 @@
 <script>
 /* ============================
    KONFIGURASI: API endpoint (Apps Script WebApp)
-   
-   *** URL API DARI PENGGUNA:
-   https://script.google.com/macros/s/AKfycbzbEiM477-FuC3Cz_TiQMQ2q0FC6Ye81Fr7wzKDANQMyMYYstG703vilVV2Gluf_N2i/exec
+   DITETapkan ke URL yang Anda berikan
    ============================ */
-const API = "https://script.google.com/macros/s/AKfycbzbEiM477-FuC3Cz_TiQMQ2q0FC6Ye81Fr7wzKDANQMyMYYstG703vilVV2Gluf_N2i/exec";
+const API = "https://script.google.com/macros/s/AKfycbyoWvLIBzuLLeSn9EuUvKUesiIKlaE6x8q8P2aWbBMSSakzR5TVl0ASOLfb8xUgOEsD/exec";
 
 /* Helper: POST JSON ke API dengan retry (Exponential Backoff) */
 async function apiPost(body){
@@ -203,22 +201,18 @@ async function apiPost(body){
     try{
       const res = await fetch(API, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        // Mode 'cors' diperlukan agar fetch API berfungsi untuk domain lintas asal
-        mode: 'cors' 
+        mode: 'cors'
       });
 
-      // 1. Cek response.ok (Status 200-299)
       if (!res.ok) {
-        // Ini menangani error server (misal: 404, 500)
         throw new Error(`Status HTTP ${res.status}: ${res.statusText}. Mungkin Apps Script Anda gagal dalam eksekusi (Internal Server Error)`);
       }
 
-      // 2. Coba parse JSON
       const text = await res.text();
-      // Apps Script yang gagal (tapi tetap mengembalikan status 200) sering mengembalikan HTML atau string kosong
       if (!text || !text.startsWith('{')) {
-          throw new Error('Respons bukan JSON yang valid. Pastikan Apps Script Anda mengembalikan ContentService.MimeType.JSON dan tidak ada Error di Code.gs.');
+          throw new Error('Respons bukan JSON yang valid. Pastikan Apps Script Anda mengembalikan JSON dan tidak ada Error di Code.gs.');
       }
       
       const result = JSON.parse(text);
@@ -227,10 +221,8 @@ async function apiPost(body){
     }catch(e){
       console.error(`apiPost attempt ${attempt + 1} failed:`, e.message);
       if (attempt === maxAttempts - 1) {
-        // Pada percobaan terakhir, lempar error yang akan ditangkap di fungsi pemanggil
         throw new Error(`Koneksi Gagal ke API setelah ${maxAttempts} percobaan. KEMUNGKINAN TERBESAR: Izin Web App Apps Script BUKAN 'Anyone' atau URL SALAH. Error Asli: ${e.message}`);
       }
-      // Tunggu sebelum retry
       await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
       attempt++;
     }
@@ -369,7 +361,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
   function forceLoss(dir){
     const cur = chart.data.datasets[0].data.slice(-1)[0] || getBaseMinute();
     let final; const offset = 0.03 + Math.random()*0.04;
-    // Pilihan hasil final adalah loss, untuk tujuan simulasi di canvas
     if(dir === 'naik') final = (openPrice != null ? openPrice : cur) - offset;
     else final = (openPrice != null ? openPrice : cur) + offset;
     startSmoothLoss(final);
@@ -474,7 +465,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
           const newSaldo = Number(res.saldo) || 0;
           if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
         } else if (res && res.status === 'failed') {
-             // Jika API bilang user tidak ditemukan
             window.logout(); 
         }
       } catch(e) {
@@ -502,13 +492,12 @@ window.addEventListener('DOMContentLoaded', ()=>{
           saldo = Number(res.saldo) || 0;
           saldoText.textContent = formatIDR(saldo);
           try{ localStorage.setItem('tredio_user', currentUser); }catch(e){}
-          loginScreen.style.display = 'none'; mainApp.style.display = 'flex'; // Gunakan flex untuk layout App
+          loginScreen.style.display = 'none'; mainApp.style.display = 'flex';
           startPolling();
         } else {
           showErrorLogin(res && res.pesan ? res.pesan : 'Login gagal. Cek kredensial Anda.');
         }
     } catch (e) {
-        // Pesan error koneksi yang lebih spesifik dari apiPost
         showErrorLogin(`Gagal Koneksi API: ${e.message}`);
     } finally {
         setButtonState(btnLogin, false, 'LOGIN');
@@ -542,7 +531,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
       }
     }catch(e){ 
       console.warn('autologin error', e.message); 
-      // Jika auto-login gagal karena masalah koneksi
       showErrorLogin(`Gagal Koneksi API saat Auto-Login: ${e.message}`);
       setButtonState(btnLogin, false, 'LOGIN');
       setButtonState(btnOpenRegister, false, 'REGISTER');
@@ -575,7 +563,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
           document.getElementById('loginUser').value = u; 
           document.getElementById('loginPass').value = p; 
           hideErrorLogin();
-          // Clear form register
           document.getElementById('regUser').value = '';
           document.getElementById('regPass').value = '';
           document.getElementById('regEmail').value = '';
