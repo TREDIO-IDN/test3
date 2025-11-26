@@ -1,300 +1,527 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Trading App Demo — GitHub-ready</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>TREDIO — Mobile Ready</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-:root{ --bg:#0b0b0c; --panel:#111217; --muted:#9aa0a6; --green:#2ecc71; --red:#e74c3c; }
-html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter,Arial,Helvetica,sans-serif}
-.container{max-width:980px;margin:12px auto;padding:12px;display:grid;grid-template-columns:1fr 360px;gap:12px}
-@media (max-width:900px){ .container{grid-template-columns:1fr;padding:8px} }
-.panel{background:linear-gradient(180deg,#070708 0%, var(--panel) 100%);border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
-.small-muted{color:#9aa0a6;font-size:13px}
-.login-card{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh}
-.box{background:#111217;padding:20px;border-radius:12px;width:320px;box-shadow:0 0 20px rgba(0,0,0,0.5)}
-input{width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:none;background:#0b0b0b;color:white;box-sizing:border-box}
-button{width:100%;padding:10px;border-radius:8px;border:none;background:#2ecc71;color:#000;font-weight:700;cursor:pointer}
-.msg{margin-top:10px;color:#e74c3c;font-size:14px;display:none}
-.info{background:#0f1113;padding:12px;border-radius:10px}
-.saldo{font-weight:700;color:var(--green);font-size:16px}
-.hidden{display:none}
-.diag{background:#0b1220;padding:10px;border-radius:8px;margin-top:10px;font-size:13px;color:#cbd5e1}
-.small-btn{background:#334155;color:#fff;padding:8px;border-radius:8px;border:none;cursor:pointer}
+  :root{ --bg:#0b0b0c; --panel:#111217; --muted:#9aa0a6; --green:#2ecc71; --red:#e74c3c; --accent:#f1c40f; }
+  html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter,Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{display:flex;flex-direction:column;min-height:100vh;}
+
+  /* Login full-screen */
+  #loginScreen{ display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; padding:20px; box-sizing:border-box; }
+  #loginBox{ width:100%; max-width:520px; background:#111217; padding:24px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+  #loginBox h1{ text-align:center; font-size:36px; margin:0 0 12px 0; letter-spacing:1px; }
+  .input{ width:100%; padding:14px; border-radius:12px; border:1px solid #1a1a1a; background:#0b0b0b; color:#fff; margin-bottom:12px; font-size:16px; box-sizing:border-box; }
+
+  .btn-primary{ width:100%; padding:12px; border-radius:12px; border:none; background:var(--green); color:#fff; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn-secondary{ width:100%; padding:12px; border-radius:12px; border:none; background:#3498db; color:#fff; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
+
+  /* Register popup overlay */
+  #registerPopup{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); justify-content:center; align-items:center; padding:18px; z-index:9999; box-sizing:border-box; }
+  #registerInner{ width:100%; max-width:520px; background:#111217; padding:18px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.6); }
+
+  /* Main app layout - mobile-first single column */
+  .app { display:flex; flex-direction:column; width:100%; box-sizing:border-box; padding:12px; gap:10px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+  .panel { background:linear-gradient(180deg,#070708 0%, var(--panel) 100%); border-radius:12px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6); }
+  .header{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; }
+  .header .left{ display:flex; flex-direction:column; gap:4px; }
+  .hdr-title{ font-size:14px; color:#ddd; }
+  .hdr-links a{ color:#e74c3c; font-weight:700; text-decoration:none; font-size:13px; }
+  .saldo { font-weight:800; color:var(--green); font-size:16px; }
+
+  /* Chart area big: ~90% height feel - use vh */
+  .chart-wrap{ position:relative; background:#000; border-radius:12px; padding:8px; overflow:hidden; }
+  canvas{ width:100% !important; height:calc(62vh) !important; display:block; border-radius:8px; } /* large on mobile */
+
+  /* timeline beneath chart */
+  #timeLine{ display:flex; justify-content:space-between; margin-top:8px; font-size:13px; color:#ff4444; font-weight:bold; padding:0 6px; }
+  #timeLine span{ flex:1; text-align:center; opacity:0.85; }
+
+  /* Controls sticky bottom area */
+  .controls-area { position:sticky; bottom:12px; z-index:40; width:100%; }
+  .card{ background:#0f1113; padding:12px; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.45); }
+
+  .top-controls { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .icon-btn { background:#222; border:1px solid #222; color:#fff; padding:10px; border-radius:10px; cursor:pointer; font-size:18px; min-width:48px; display:inline-flex; align-items:center; justify-content:center; }
+  .select-interval{ padding:10px; border-radius:10px; background:#0b0b0b; color:#fff; border:1px solid #222; min-width:120px; }
+
+  .small-muted{ color:#9aa0a6; font-size:13px; }
+  .quick-select{ width:100%; padding:12px; border-radius:10px; background:#0b0b0b; color:#fff; border:1px solid #222; margin-top:6px; box-sizing:border-box; }
+
+  .amount-input{ width:100%; padding:12px; border-radius:10px; border:1px solid #222; background:#0b0b0b; color:#fff; margin-top:8px; box-sizing:border-box; }
+
+  .btn-row{ display:flex; gap:10px; margin-top:12px; }
+  .btn{ flex:1; padding:14px; border-radius:12px; border:none; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn-up{ background:linear-gradient(135deg,var(--green),#27ae60); color:#fff; }
+  .btn-down{ background:linear-gradient(135deg,var(--red),#c0392b); color:#fff; }
+
+  .status { margin-top:12px; padding:12px; border-radius:10px; background:#070708; text-align:center; font-weight:700; font-size:15px; }
+  .result-win{ color:var(--green); }
+  .result-lose{ color:var(--red); }
+
+  /* responsive for wider screens: two-column */
+  @media (min-width:900px){
+    .app{ max-width:980px; margin:12px auto; display:grid; grid-template-columns: 1fr 360px; gap:12px; padding:12px; }
+    canvas{ height:360px !important; }
+    .controls-area{ position:static; }
+  }
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="loginScreen" class="login-card">
-  <h1 style="margin-bottom:20px;font-size:32px;font-weight:800">TREDIO</h1>
-  <div class="box">
-    <input id="loginUser" placeholder="Username" />
-    <input id="loginPass" placeholder="Password" type="password" />
-    <button id="btnLogin">LOGIN</button>
-    <div id="loginError" class="msg">Username / Password salah!</div>
+<!-- LOGIN SCREEN (full-screen) -->
+<div id="loginScreen">
+  <div id="loginBox">
+    <h1>TREDIO</h1>
+    <div style="color:var(--muted); text-align:center; margin-bottom:12px;">Masuk untuk mulai trading</div>
 
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button id="btnRegister" class="small-btn" style="flex:1;background:#0ea5a3">REGISTER</button>
-      <button id="btnTestApi" class="small-btn" style="flex:1;background:#2563eb">TEST API</button>
-    </div>
+    <input id="loginUser" class="input" placeholder="Username" autocomplete="username" />
+    <input id="loginPass" class="input" placeholder="Password" type="password" autocomplete="current-password" />
+    <button id="btnLogin" class="btn-primary">LOGIN</button>
 
-    <div id="apiDiag" class="diag hidden"></div>
+    <button id="btnOpenRegister" class="btn-secondary">REGISTER</button>
+
+    <div id="loginError" style="margin-top:10px;color:#e74c3c;font-size:14px;display:none">Username / Password salah!</div>
   </div>
 </div>
 
-<!-- MAIN APP simplified -->
-<div id="mainApp" class="container hidden">
-  <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div>
-        <div style="font-size:14px;color:#ddd">Harga Batubara Premium</div>
-        <a class="small-muted" href="https://wa.me/message/HWGD7LUY5VQIF1" target="_blank" style="text-decoration:none;color:red;font-weight:bold">Deposit / Withdraw</a>
+<!-- REGISTER POPUP -->
+<div id="registerPopup">
+  <div id="registerInner">
+    <h2 style="margin:0 0 12px 0">Register</h2>
+    <input id="regUser" class="input" placeholder="Username" />
+    <input id="regPass" class="input" placeholder="Password" type="password" />
+    <input id="regEmail" class="input" placeholder="Email" type="email" />
+    <input id="regHp" class="input" placeholder="Nomor HP" />
+    <input id="regBank" class="input" placeholder="Bank" />
+    <input id="regNorek" class="input" placeholder="No Rekening" />
+    <button id="btnRegister" class="btn-primary" style="margin-top:6px">DAFTAR</button>
+    <button id="btnRegCancel" class="btn-secondary" style="margin-top:8px">BATAL</button>
+    <div id="regError" style="margin-top:10px;color:#e74c3c;font-size:14px;display:none"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="app" style="display:none;">
+
+  <!-- Top panel: header + big chart -->
+  <div class="panel" style="padding:12px;">
+    <div class="header">
+      <div class="left">
+        <div class="hdr-title">Harga Batubara Premium</div>
+        <div class="hdr-links"><a href="https://wa.me/message/HWGD7LUY5VQIF1" target="_blank">Deposit / Withdraw</a></div>
       </div>
 
       <div style="text-align:right">
-        <div class="small-muted">Saldo Real:</div>
-        <div class="saldo" id="saldoText">Rp 0</div>
+        <div style="font-size:12px;color:#9aa0a6">Saldo Real:</div>
+        <div class="saldo" id="saldoText">Rp 140.000.000</div>
       </div>
     </div>
 
-    <div class="info">
-      <div id="userInfo">User: <b>-</b></div>
-      <div id="loginState" style="margin-top:6px;color:#9aa0a6;font-size:13px"></div>
+    <div class="chart-wrap" id="chartWrap">
+      <canvas id="chartCanvas"></canvas>
+      <div id="overlayOpen" class="overlay-line overlay-open"></div>
+      <div id="overlayClose" class="overlay-line overlay-close"></div>
     </div>
 
-    <div id="diagArea" class="diag hidden"></div>
+    <div id="timeLine" style="margin-top:10px;"></div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:10px;color:#9aa0a6;">
+      <div>Harga Buka: <span id="txtOpen">-</span></div>
+      <div>Harga Sekarang: <span id="txtNow">-</span></div>
+      <div>Countdown: <span id="txtCountdown">Durasi taruhan</span>s</div>
+    </div>
   </div>
 
-  <div class="panel">
-    <div style="font-weight:700;margin-bottom:8px">Kontrol Cepat</div>
-    <select id="quickAmount"><option value="">Pilih Nominal Cepat</option><option value="140000">140.000</option><option value="240000">240.000</option></select>
-    <input id="manualAmount" type="number" placeholder="Atau masukkan manual (Rp)" />
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="btnUp" style="flex:1;background:linear-gradient(135deg,var(--green),#27ae60)">⬆ PASANG NAIK</button>
-      <button id="btnDown" style="flex:1;background:linear-gradient(135deg,#e74c3c,#c0392b)">⬇ PASANG TURUN</button>
+  <!-- Bottom: controls sticky -->
+  <div class="controls-area">
+    <div class="card">
+      <div class="top-controls">
+        <button id="soundToggle" class="icon-btn">🔇</button>
+        <select id="intervalSelect" class="select-interval">
+          <option value="1">1 menit</option>
+          <option value="5" selected>5 menit</option>
+          <option value="10">10 menit</option>
+          <option value="20">20 menit</option>
+        </select>
+        <div style="flex:1; text-align:right; color:#9aa0a6; font-size:13px;">Durasi taruhan</div>
+      </div>
+
+      <div class="small-muted">Pilih Nominal Cepat</div>
+      <select id="quickAmount" class="quick-select">
+        <option value="">Pilih Nominal Cepat</option>
+        <option value="140000">140.000</option>
+        <option value="240000">240.000</option>
+        <option value="700000">700.000</option>
+        <option value="1400000">1.400.000</option>
+        <option value="14000000">14.000.000</option>
+        <option value="30000000">30.000.000</option>
+        <option value="74000000">74.000.000</option>
+      </select>
+
+      <input id="manualAmount" class="amount-input" type="number" placeholder="Atau masukkan manual (Rp)" />
+
+      <div class="btn-row">
+        <button id="btnUp" class="btn btn-up">⬆ PASANG NAIK</button>
+        <button id="btnDown" class="btn btn-down">⬇ PASANG TURUN</button>
+      </div>
+
+      <div class="status" id="statusBox">Menunggu transaksi...</div>
+
+      <div class="small-muted" style="margin-top:10px">
+        <div>Hasil terakhir: <span id="lastResult">-</span></div>
+        <div>Harga Tutup (last): <span id="txtClose">-</span></div>
+      </div>
     </div>
-    <div id="statusBox" class="diag" style="margin-top:10px">Menunggu transaksi...</div>
-    <button id="btnLogout" class="small-btn" style="margin-top:12px;background:#ef4444">LOGOUT</button>
   </div>
+
 </div>
 
 <script>
-// ----------------- CONFIG -----------------
-const API_URL = 'https://script.google.com/macros/s/AKfycbzpc2HyjUbq488CEHHQwtWTr4cpVi_A-tMx07GngWyHcpa1lRcXSuBevaadHkBxvjjX/exec';
-const FETCH_TIMEOUT = 10000; // ms
+/* ============================
+   CONFIG: API endpoint (your Apps Script WebApp)
+   ============================ */
+const API = "https://script.google.com/macros/s/AKfycbyoWvLIBzuLLeSn9EuUvKUesiIKlaE6x8q8P2aWbBMSSakzR5TVl0ASOLfb8xUgOEsD/exec";
 
-// ----------------- HELPERS -----------------
-function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT){
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), timeout);
-    fetch(url, options).then(res => { clearTimeout(timer); resolve(res); }).catch(err => { clearTimeout(timer); reject(err); });
-  });
+/* Helper: POST JSON to API */
+async function apiPost(body){
+  try{
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      mode: 'cors'
+    });
+    return await res.json();
+  }catch(e){
+    console.error('apiPost error', e);
+    return null;
+  }
 }
 
-function safePost(payload){
-  // always send JSON and Content-Type header (Apps Script accepts this)
-  return fetchWithTimeout(API_URL, {
-    method: 'POST',
-    mode: 'cors',
-    cache: 'no-cache',
-    credentials: 'omit',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).then(async res => {
-    // network-level ok
-    try {
-      const text = await res.text();
-      // try parse JSON (some CORS misconfigs may return empty body)
-      try { return JSON.parse(text); } catch(e){
-        throw new Error('Invalid JSON response or empty body from server. Response text: ' + text);
+/* Helper: GET with query */
+async function apiGet(action, paramsObj){
+  try{
+    const params = new URLSearchParams({ action, ...(paramsObj||{}) });
+    const res = await fetch(API + "?" + params.toString(), { method:'GET', mode:'cors' });
+    return await res.json();
+  }catch(e){
+    console.error('apiGet error', e);
+    return null;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+
+  // DOM refs
+  const loginScreen = document.getElementById('loginScreen');
+  const mainApp = document.getElementById('mainApp');
+  const btnLogin = document.getElementById('btnLogin');
+  const btnOpenRegister = document.getElementById('btnOpenRegister');
+  const registerPopup = document.getElementById('registerPopup');
+  const btnRegister = document.getElementById('btnRegister');
+  const btnRegCancel = document.getElementById('btnRegCancel');
+  const regError = document.getElementById('regError');
+
+  const btnUp = document.getElementById('btnUp');
+  const btnDown = document.getElementById('btnDown');
+  const quickAmount = document.getElementById('quickAmount');
+  const manualAmount = document.getElementById('manualAmount');
+  const saldoText = document.getElementById('saldoText');
+  const lastResult = document.getElementById('lastResult');
+  const txtNow = document.getElementById('txtNow');
+  const txtOpen = document.getElementById('txtOpen');
+  const txtClose = document.getElementById('txtClose');
+  const txtCountdown = document.getElementById('txtCountdown');
+  const statusBox = document.getElementById('statusBox');
+  const intervalSelect = document.getElementById('intervalSelect');
+  const soundToggle = document.getElementById('soundToggle');
+  const loginError = document.getElementById('loginError');
+  const loginUserInput = document.getElementById('loginUser');
+  const loginPassInput = document.getElementById('loginPass');
+
+  // app state
+  let currentUser = null;
+  let saldo = 140000000;
+  const formatIDR = v => 'Rp ' + Number(v).toLocaleString('id-ID');
+
+  // polling
+  let pollIntervalId = null;
+  const POLL_INTERVAL_MS = 3000;
+
+  // init display
+  saldoText.textContent = formatIDR(saldo);
+
+  /* ---------------- CHART SETUP (unchanged) ---------------- */
+  const hargaPerMenit = [74.996,75.001,74.998,75.005,75.012,75.008,75.004,74.999,75.003,75.008,75.015,75.020,75.025,75.022,75.018,75.014,75.010,75.006,75.009,75.014,75.011,90000,175.000,50000,74.990,74.987,74.982,74.979,74.975,74.970,74.965,74.968,74.972,74.977,74.981,74.985,74.990,74.985,74.980,74.976,74.972,74.978,74.983,74.975,74.970,74.965,74.971,74.977,74.980,74.985,74.992,74.996,75.000,75.005,75.011,75.018,75.023,75.028,75.025,75.021];
+
+  const ctx = document.getElementById('chartCanvas').getContext('2d');
+  const customOverlayPlugin = {
+    id:'customOverlay',
+    afterDraw(chart,args,options){
+      const {ctx, chartArea, scales} = chart;
+      const o = options.openIndex;
+      const c = options.closeIndex;
+      function X(i){ return i==null?null:scales.x.getPixelForValue(chart.data.labels[i]); }
+      const oX = X(o), cX = X(c);
+      ctx.save();
+      if(oX!==null && cX!==null){
+        ctx.fillStyle='rgba(241,196,15,0.12)';
+        ctx.fillRect(Math.min(oX,cX), chartArea.top, Math.abs(oX,cX), chartArea.bottom-chartArea.top);
       }
-    } catch(e){ throw e; }
+      ctx.restore();
+      ctx.save();
+      if(oX!==null){ ctx.strokeStyle='rgba(241,196,15,0.95)'; ctx.setLineDash([6,4]); ctx.beginPath(); ctx.moveTo(oX,chartArea.top); ctx.lineTo(oX,chartArea.bottom); ctx.stroke(); }
+      if(cX!==null){ ctx.strokeStyle='rgba(231,76,60,0.95)'; ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(cX,chartArea.top); ctx.lineTo(cX,chartArea.bottom); ctx.stroke(); }
+      ctx.restore();
+    }
+  };
+  Chart.register(customOverlayPlugin);
+
+  const chart = new Chart(ctx,{
+    type:'line',
+    data:{ labels:[], datasets:[{ label:'Harga', data:[], borderColor:'#2ecc71', backgroundColor:'rgba(46,204,113,0.06)', pointRadius:0, tension:0.28, borderWidth:2 }] },
+    options:{ animation:false, responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, customOverlay:{ openIndex:null, closeIndex:null } },
+      scales:{ x:{ ticks:{display:false}, grid:{color:'#222'} }, y:{ ticks:{color:'#9aa0a6'}, grid:{color:'#222'} } }
+    }
   });
-}
 
-function showDiag(message){
-  const d = document.getElementById('apiDiag');
-  d.classList.remove('hidden');
-  d.innerText = message;
-}
+  function getBaseMinute(){ const m=new Date().getMinutes(); return hargaPerMenit[(m===0?59:m-1)]; }
+  function getHargaDetik(){ return +(getBaseMinute() + (Math.random()-0.5)*0.03); }
 
-function hideDiag(){ document.getElementById('apiDiag').classList.add('hidden'); }
+  // sound off by default
+  let audioCtx=null, soundEnabled=false;
+  soundToggle.addEventListener('click', ()=>{ soundEnabled = !soundEnabled; soundToggle.textContent = soundEnabled ? '🔊' : '🔇'; });
 
-function showMessage(elementId, msg, isError = true){
-  const el = document.getElementById(elementId);
-  el.style.display = 'block';
-  el.style.color = isError ? '#f87171' : '#34d399';
-  el.innerText = msg;
-}
-
-function hideMessage(elementId){ document.getElementById(elementId).style.display = 'none'; }
-
-// ----------------- APP STATE -----------------
-let currentUser = null;
-let saldo = 0;
-
-// ----------------- UI refs -----------------
-const btnLogin = document.getElementById('btnLogin');
-const btnRegister = document.getElementById('btnRegister');
-const btnTestApi = document.getElementById('btnTestApi');
-const btnLogout = document.getElementById('btnLogout');
-const btnUp = document.getElementById('btnUp');
-const btnDown = document.getElementById('btnDown');
-
-// ----------------- CORE: API DIAGNOSTIC -----------------
-async function testApi(){
-  hideMessage('loginError'); hideDiag();
-  const diag = document.getElementById('apiDiag'); diag.classList.remove('hidden'); diag.innerText = 'Menguji koneksi ke API...';
-
-  // Try a simple POST with action=poll to check reachability (getUserData without params would error on server)
-  try{
-    const res = await fetchWithTimeout(API_URL, { method: 'GET', mode: 'cors' }, 5000).catch(_=>null);
-    // If GET allowed, server may return HTML (web app) or JSON; we show its presence
-    if(res && (res.status >= 200 && res.status < 400)){
-      diag.innerText = 'API reachable (GET) — status: ' + res.status + '. Jika ini kosong, server memberi respons kosong.';
-      return;
-    }
-  }catch(e){ /* ignore and continue to POST test */ }
-
-  // POST test expecting proper JSON reply for unknown action
-  try{
-    const reply = await safePost({ action: 'ping' });
-    diag.innerText = 'API reachable (POST). Server reply: ' + JSON.stringify(reply);
-    return;
-  }catch(err){
-    // Provide actionable guidance
-    let msg = 'Gagal menghubungi API. Error: ' + (err && err.message ? err.message : String(err)) + '\n\nKemungkinan penyebab: ';
-    msg += '\n - Web App belum dideploy sebagai "Anyone, even anonymous" (deploy ulang di Apps Script).';
-    msg += '\n - CORS: server tidak mengembalikan header CORS untuk domain ini.';
-    msg += '\n - URL salah atau jaringan (offline).';
-    msg += '\n\nLangkah cepat: buka URL API langsung di browser (paste di tab) dan lihat respons; jika meminta login, deploy ulang web app.';
-    diag.innerText = msg;
-    return;
+  function playTick(){
+    if(!soundEnabled) return;
+    try{
+      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(1000,audioCtx.currentTime);
+      g.gain.setValueAtTime(0.0001,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.06,audioCtx.currentTime+0.01);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.12);
+      o.stop(audioCtx.currentTime+0.15);
+    }catch(e){}
   }
-}
 
-// ----------------- AUTH -----------------
-async function loginUser(){
-  hideMessage('loginError'); hideDiag();
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if(!u || !p){ showMessage('loginError','Isi username dan password.'); return; }
+  let labelCounter=0;
+  function pushPoint(h){
+    chart.data.labels.push(labelCounter++);
+    chart.data.datasets[0].data.push(h);
+    if(chart.data.labels.length>120){ chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+    chart.update('none');
+  }
 
-  btnLogin.disabled = true; btnLogin.innerText = 'LOADING...';
-  try{
-    const res = await safePost({ action: 'login', username: u, password: p });
-    if(res && res.status === 'sukses'){
-      currentUser = res.username || u;
-      saldo = Number(res.saldo) || 0;
-      localStorage.setItem('tredio_user', currentUser);
-      openApp();
+  // periodic add point every second
+  setInterval(()=>{ const h = getHargaDetik(); txtNow.textContent = h.toFixed(3); pushPoint(h); playTick(); }, 1000);
+
+  // smooth animation for forced final
+  let smoothTarget = null, smoothStartPrice = null, smoothStartTime = 0;
+  const smoothDurationMs = 1800;
+  function startSmoothLoss(finalPrice){
+    if(!chart.data.datasets[0].data.length) return;
+    smoothTarget = finalPrice;
+    smoothStartPrice = chart.data.datasets[0].data[chart.data.datasets[0].data.length-1];
+    smoothStartTime = performance.now();
+    requestAnimationFrame(animateSmooth);
+  }
+  function animateSmooth(now){
+    if(smoothTarget === null) return;
+    const elapsed = now - smoothStartTime;
+    const t = Math.min(1, Math.max(0, elapsed / smoothDurationMs));
+    const ease = 1 - Math.pow(1 - t, 3);
+    const newPrice = smoothStartPrice + (smoothTarget - smoothStartPrice) * ease;
+    const lastIdx = chart.data.datasets[0].data.length - 1;
+    if(lastIdx >= 0){ chart.data.datasets[0].data[lastIdx] = newPrice; chart.update('none'); }
+    if(t < 1) requestAnimationFrame(animateSmooth); else smoothTarget = null;
+  }
+
+  function forceLoss(dir){
+    const cur = chart.data.datasets[0].data.slice(-1)[0] || getBaseMinute();
+    let final; const offset = 0.03 + Math.random()*0.04;
+    if(dir === 'naik') final = (openPrice != null ? openPrice : cur) - offset;
+    else final = (openPrice != null ? openPrice : cur) + offset;
+    startSmoothLoss(final);
+    return final;
+  }
+
+  /* TRADING LOGIC (kept) */
+  let tradingActive=false, openPrice=null, openIndex=null, closeIndex=null, countdown=60, timer=null, chosenAmount=0;
+  function pickAmount(){ const q = Number(quickAmount.value || 0); const m = Number(manualAmount.value || 0); return m>0?m:(q>0?q:0); }
+  function setDisabled(x){ btnUp.disabled = x; btnDown.disabled = x; quickAmount.disabled = x; manualAmount.disabled = x; intervalSelect.disabled = x; }
+
+  async function startTrade(dir){
+    if(tradingActive) return alert('Transaksi masih berjalan');
+    if(!currentUser) return alert('Silakan login terlebih dahulu.');
+    chosenAmount = pickAmount();
+    if(!chosenAmount) return alert('Nominal belum dipilih');
+    if(chosenAmount>saldo) return alert('Saldo tidak cukup');
+
+    const last = chart.data.datasets[0].data.slice(-1)[0];
+    openPrice = last; openIndex = chart.data.labels.length - 1; closeIndex = null;
+    chart.options.plugins.customOverlay.openIndex = openIndex; chart.options.plugins.customOverlay.closeIndex = null; chart.update();
+
+    txtOpen.textContent = openPrice ? openPrice.toFixed(3) : '-';
+    txtClose.textContent = '-';
+    setDisabled(true);
+    countdown = Number(intervalSelect.value) * 60;
+    txtCountdown.textContent = countdown;
+    tradingActive = true;
+    statusBox.classList.remove('result-win','result-lose'); statusBox.textContent = 'NETRAL';
+
+    timer = setInterval(async ()=>{
+      countdown--; txtCountdown.textContent = countdown;
+      const current = chart.data.datasets[0].data.slice(-1)[0];
+      let interim = 'NETRAL';
+      if(dir === 'naik') interim = current > openPrice ? 'MENANG' : (current < openPrice ? 'KALAH' : 'NETRAL');
+      else interim = current < openPrice ? 'MENANG' : (current > openPrice ? 'KALAH' : 'NETRAL');
+      statusBox.classList.remove('result-win','result-lose');
+      if(interim === 'MENANG'){ statusBox.textContent = 'MENANG'; statusBox.classList.add('result-win'); }
+      else if(interim === 'KALAH'){ statusBox.textContent = 'KALAH'; statusBox.classList.add('result-lose'); }
+      else { statusBox.textContent = 'NETRAL'; }
+
+      if(countdown <= 0){
+        clearInterval(timer); timer = null;
+        const final = forceLoss(dir);
+        saldo -= chosenAmount;
+        statusBox.classList.remove('result-win'); statusBox.classList.add('result-lose');
+        statusBox.textContent = `KALAH -${formatIDR(chosenAmount)} — ${final.toFixed(3)}`;
+        lastResult.textContent = 'KALAH';
+        saldoText.textContent = formatIDR(saldo);
+        txtClose.textContent = final.toFixed(3);
+        closeIndex = chart.data.labels.length - 1;
+        chart.options.plugins.customOverlay.closeIndex = closeIndex;
+        chart.update();
+        tradingActive = false;
+        setDisabled(false);
+
+        // save saldo to server (via API)
+        if(currentUser){
+          const res = await apiPost({ action: 'updateSaldo', username: currentUser, saldo: saldo });
+          // ignore failure silently (UI already updated)
+          if(!res) console.warn('updateSaldo failed/no response');
+        }
+      }
+    },1000);
+  }
+
+  btnUp.addEventListener('click', ()=>startTrade('naik'));
+  btnDown.addEventListener('click', ()=>startTrade('turun'));
+  quickAmount.addEventListener('change', e=>{ manualAmount.value = e.target.value; });
+
+  /* TIMELINE */
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  function formatHM(d){ return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function updateTimeLine(){
+    const now = new Date(); const container = document.getElementById('timeLine'); let html='';
+    for(let i=5;i>=0;i--){ const t = new Date(now.getTime() - (i * 60000)); html += `<span>${formatHM(t)}</span>`; if(i>0) html+=''; }
+    container.innerHTML = html;
+  }
+  updateTimeLine(); setInterval(updateTimeLine,1000);
+
+  // ------------ LOGIN / SERVER INTERACTION ------------
+  function showErrorLogin(msg){ loginError.style.display = 'block'; loginError.textContent = msg || 'Username / Password salah!'; }
+  function hideErrorLogin(){ loginError.style.display = 'none'; }
+
+  async function startPolling(){
+    stopPolling();
+    pollIntervalId = setInterval(async ()=> {
+      if(!currentUser) return;
+      const res = await apiPost({ action: 'getUserData', username: currentUser });
+      if(res && (res.status === 'success' || res.status === 'sukses')){
+        const newSaldo = Number(res.saldo) || 0;
+        if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
+      }
+    }, POLL_INTERVAL_MS);
+  }
+  function stopPolling(){ if(pollIntervalId){ clearInterval(pollIntervalId); pollIntervalId = null; } }
+
+  // login handler using API POST -> action: login
+  async function loginUser(){
+    hideErrorLogin();
+    const username = (loginUserInput.value || '').trim();
+    const password = (loginPassInput.value || '').trim();
+    if(!username || !password){ showErrorLogin('Isi username dan password.'); return; }
+    btnLogin.disabled = true; btnLogin.textContent = 'LOADING...';
+    const res = await apiPost({ action: 'login', username, password });
+    btnLogin.disabled = false; btnLogin.textContent = 'LOGIN';
+    if(res && (res.status === 'success' || res.status === 'sukses')){
+      currentUser = res.username || username;
+      if(typeof res.saldo !== 'undefined' && res.saldo !== null) saldo = Number(res.saldo) || saldo;
+      saldoText.textContent = formatIDR(saldo);
+      try{ localStorage.setItem('tredio_user', currentUser); }catch(e){}
+      loginScreen.style.display = 'none'; mainApp.style.display = 'block';
+      startPolling();
     } else {
-      showMessage('loginError', res && res.pesan ? res.pesan : 'Login gagal.');
+      showErrorLogin(res && res.pesan ? res.pesan : 'Login gagal.');
     }
-  }catch(err){
-    // Show friendly, actionable error
-    showMessage('loginError', 'Gagal menghubungi server: ' + (err.message || err));
-    showDiag('Detail: ' + (err.stack || err.message || err));
-  } finally { btnLogin.disabled = false; btnLogin.innerText = 'LOGIN'; }
-}
-
-async function registerUser(){
-  hideMessage('loginError'); hideDiag();
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if(!u || !p){ showMessage('loginError','Isi username dan password.'); return; }
-
-  btnRegister.disabled = true; btnRegister.innerText = 'LOADING...';
-  try{
-    const res = await safePost({ action: 'register', username: u, password: p });
-    showMessage('loginError', res && res.pesan ? res.pesan : 'Selesai.', false);
-  }catch(err){ showMessage('loginError','Gagal menghubungi server: ' + (err.message || err)); showDiag(err.stack || err.message || err); }
-  finally{ btnRegister.disabled = false; btnRegister.innerText = 'REGISTER'; }
-}
-
-// ----------------- APP UI -----------------
-function openApp(){
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('userInfo').innerHTML = 'User: <b>' + currentUser + '</b>';
-  document.getElementById('saldoText').innerText = 'Rp ' + Number(saldo).toLocaleString('id-ID');
-  document.getElementById('loginState').innerText = 'Logged in via API';
-  startPolling();
-}
-
-function logout(){
-  try{ localStorage.removeItem('tredio_user'); }catch(e){}
-  stopPolling();
-  currentUser = null; saldo = 0;
-  document.getElementById('mainApp').classList.add('hidden');
-  document.getElementById('loginScreen').style.display = 'flex';
-}
-
-// ----------------- POLLING -----------------
-let pollId = null;
-function startPolling(){ stopPolling(); pollId = setInterval(refreshSaldo, 3000); }
-function stopPolling(){ if(pollId){ clearInterval(pollId); pollId = null; } }
-
-async function refreshSaldo(){
-  if(!currentUser) return;
-  try{
-    const res = await safePost({ action: 'getUserData', username: currentUser });
-    if(res && res.status === 'sukses'){
-      const newSaldo = Number(res.saldo) || 0;
-      if(newSaldo !== saldo){ saldo = newSaldo; document.getElementById('saldoText').innerText = 'Rp ' + saldo.toLocaleString('id-ID'); }
-    }
-  }catch(err){
-    // don't flood UI with errors — show diag once
-    console.warn('Polling error', err);
   }
-}
+  btnLogin.addEventListener('click', loginUser);
 
-// ----------------- TRADING (simplified) -----------------
-async function placeBet(direction){
-  if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-  const q = Number(document.getElementById('quickAmount').value || 0);
-  const m = Number(document.getElementById('manualAmount').value || 0);
-  const amt = m>0?m:(q>0?q:0);
-  if(!amt){ alert('Nominal belum dipilih'); return; }
-  if(amt > saldo){ alert('Saldo tidak cukup'); return; }
-
-  // For demo: always subtract amount and update server
-  saldo -= amt;
-  document.getElementById('saldoText').innerText = 'Rp ' + saldo.toLocaleString('id-ID');
-
-  try{
-    const res = await safePost({ action: 'updateSaldo', username: currentUser, saldo: saldo });
-    if(!(res && res.status === 'sukses')){
-      showDiag('Update server gagal: ' + JSON.stringify(res));
+  // refresh UI every 3s (keeps saldo updated)
+  setInterval(async ()=>{
+    if(!currentUser) return;
+    const res = await apiPost({ action: 'getUserData', username: currentUser });
+    if(res && (res.status === 'success' || res.status === 'sukses')){
+      const newSaldo = Number(res.saldo) || 0;
+      if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
     }
-  }catch(err){ showDiag('Gagal update server: ' + (err.message||err)); }
-}
+    chart.update('none');
+  }, 3000);
 
-// ----------------- EVENT BINDINGS -----------------
-btnLogin.addEventListener('click', loginUser);
-btnRegister.addEventListener('click', registerUser);
-btnTestApi.addEventListener('click', testApi);
-btnLogout.addEventListener('click', logout);
-document.getElementById('btnUp').addEventListener('click', ()=>placeBet('naik'));
-document.getElementById('btnDown').addEventListener('click', ()=>placeBet('turun'));
-
-// ----------------- AUTO LOGIN -----------------
-(async function(){
+  // Auto-login on load using localStorage (works with GitHub Pages)
   try{
     const saved = localStorage.getItem('tredio_user');
     if(saved){
-      // try to fetch user data and auto open
       currentUser = saved;
-      try{
-        const res = await safePost({ action: 'getUserData', username: currentUser });
-        if(res && res.status === 'sukses'){ saldo = Number(res.saldo)||0; openApp(); }
-        else { localStorage.removeItem('tredio_user'); }
-      }catch(e){ console.warn('Auto-login failed', e); }
+      const res = await apiPost({ action: 'getUserData', username: currentUser });
+      if(res && (res.status === 'success' || res.status === 'sukses')){
+        saldo = Number(res.saldo) || saldo;
+        saldoText.textContent = formatIDR(saldo);
+        loginScreen.style.display = 'none'; mainApp.style.display = 'block';
+        startPolling();
+      } else {
+        currentUser = null; localStorage.removeItem('tredio_user');
+      }
     }
-  }catch(e){/* ignore localStorage errors */}
-})();
+  }catch(e){ console.warn('autologin error', e); }
 
+  // REGISTER logic (calls API -> action: register)
+  btnOpenRegister.addEventListener('click', ()=>{ registerPopup.style.display = 'flex'; regError.style.display = 'none'; });
+  btnRegCancel.addEventListener('click', ()=>{ registerPopup.style.display = 'none'; });
+
+  btnRegister.addEventListener('click', async ()=>{
+    const u = (document.getElementById('regUser').value || '').trim();
+    const p = (document.getElementById('regPass').value || '').trim();
+    const e = (document.getElementById('regEmail').value || '').trim();
+    const h = (document.getElementById('regHp').value || '').trim();
+    const b = (document.getElementById('regBank').value || '').trim();
+    const n = (document.getElementById('regNorek').value || '').trim();
+    if(!u || !p){ regError.textContent = 'Username dan Password wajib.'; regError.style.display = 'block'; return; }
+    btnRegister.disabled = true; btnRegister.textContent = 'PROSES...';
+    const res = await apiPost({ action: 'register', username: u, password: p, email: e, hp: h, bank: b, norek: n });
+    btnRegister.disabled = false; btnRegister.textContent = 'DAFTAR';
+    if(res && (res.status === 'success' || res.status === 'sukses')){
+      registerPopup.style.display = 'none';
+      alert('Registrasi berhasil. Silakan login.');
+    } else {
+      regError.textContent = res && res.pesan ? res.pesan : 'Gagal registrasi';
+      regError.style.display = 'block';
+    }
+  });
+
+  // Logout helper
+  window.logout = function(){ try{ localStorage.removeItem('tredio_user'); }catch(e){} stopPolling(); currentUser = null; mainApp.style.display = 'none'; loginScreen.style.display = 'flex'; };
+
+});
 </script>
 </body>
 </html>
