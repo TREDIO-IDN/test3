@@ -73,7 +73,6 @@
 </head>
 <body>
 
-<!-- LOGIN SCREEN (full-screen) -->
 <div id="loginScreen">
   <div id="loginBox">
     <h1>TREDIO</h1>
@@ -89,7 +88,6 @@
   </div>
 </div>
 
-<!-- REGISTER POPUP -->
 <div id="registerPopup">
   <div id="registerInner">
     <h2 style="margin:0 0 12px 0">Register</h2>
@@ -105,10 +103,8 @@
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="mainApp" class="app" style="display:none;">
 
-  <!-- Top panel: header + big chart -->
   <div class="panel" style="padding:12px;">
     <div class="header">
       <div class="left">
@@ -137,7 +133,6 @@
     </div>
   </div>
 
-  <!-- Bottom: controls sticky -->
   <div class="controls-area">
     <div class="card">
       <div class="top-controls">
@@ -187,12 +182,14 @@
    ============================ */
 const API = "https://script.google.com/macros/s/AKfycbyoWvLIBzuLLeSn9EuUvKUesiIKlaE6x8q8P2aWbBMSSakzR5TVl0ASOLfb8xUgOEsD/exec";
 
-/* Helper: POST JSON to API */
+/* Helper: POST JSON to API 
+   FIX: Removed explicit Content-Type header to avoid CORS errors on GitHub 
+*/
 async function apiPost(body){
   try{
     const res = await fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // headers: { 'Content-Type': 'application/json' }, // <-- Dihapus agar work di GitHub
       body: JSON.stringify(body),
       mode: 'cors'
     });
