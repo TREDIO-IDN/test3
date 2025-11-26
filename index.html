@@ -18,7 +18,9 @@
   .input{ width:100%; padding:14px; border-radius:12px; border:1px solid #1a1a1a; background:#0b0b0b; color:#fff; margin-bottom:12px; font-size:16px; box-sizing:border-box; }
 
   .btn-primary{ width:100%; padding:12px; border-radius:12px; border:none; background:var(--green); color:#fff; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn-primary:disabled{ background:#1e5e3b; cursor:not-allowed; }
   .btn-secondary{ width:100%; padding:12px; border-radius:12px; border:none; background:#3498db; color:#fff; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
+  .btn-secondary:disabled{ background:#1c537d; cursor:not-allowed; }
 
   /* Register popup overlay */
   #registerPopup{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); justify-content:center; align-items:center; padding:18px; z-index:9999; box-sizing:border-box; }
@@ -55,13 +57,15 @@
   .amount-input{ width:100%; padding:12px; border-radius:10px; border:1px solid #222; background:#0b0b0b; color:#fff; margin-top:8px; box-sizing:border-box; }
 
   .btn-row{ display:flex; gap:10px; margin-top:12px; }
-  .btn{ flex:1; padding:14px; border-radius:12px; border:none; font-weight:800; font-size:16px; cursor:pointer; }
   .btn-up{ background:linear-gradient(135deg,var(--green),#27ae60); color:#fff; }
   .btn-down{ background:linear-gradient(135deg,var(--red),#c0392b); color:#fff; }
+  .btn{ flex:1; padding:14px; border-radius:12px; border:none; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .status { margin-top:12px; padding:12px; border-radius:10px; background:#070708; text-align:center; font-weight:700; font-size:15px; }
   .result-win{ color:var(--green); }
   .result-lose{ color:var(--red); }
+  .error-box{ margin-top:10px; color:#e74c3c; font-size:14px; padding:8px; border:1px solid var(--red); border-radius:6px; background:rgba(231,76,60,0.1); word-break: break-word; }
 
   /* responsive for wider screens: two-column */
   @media (min-width:900px){
@@ -73,6 +77,7 @@
 </head>
 <body>
 
+<!-- LAYAR LOGIN (full-screen) -->
 <div id="loginScreen">
   <div id="loginBox">
     <h1>TREDIO</h1>
@@ -84,27 +89,30 @@
 
     <button id="btnOpenRegister" class="btn-secondary">REGISTER</button>
 
-    <div id="loginError" style="margin-top:10px;color:#e74c3c;font-size:14px;display:none">Username / Password salah!</div>
+    <div id="loginError" class="error-box" style="display:none;"></div>
   </div>
 </div>
 
+<!-- POPUP REGISTER -->
 <div id="registerPopup">
   <div id="registerInner">
-    <h2 style="margin:0 0 12px 0">Register</h2>
+    <h2 style="margin:0 0 12px 0">Register Akun Baru</h2>
     <input id="regUser" class="input" placeholder="Username" />
     <input id="regPass" class="input" placeholder="Password" type="password" />
-    <input id="regEmail" class="input" placeholder="Email" type="email" />
-    <input id="regHp" class="input" placeholder="Nomor HP" />
-    <input id="regBank" class="input" placeholder="Bank" />
-    <input id="regNorek" class="input" placeholder="No Rekening" />
+    <input id="regEmail" class="input" placeholder="Email (Opsional)" type="email" />
+    <input id="regHp" class="input" placeholder="Nomor HP (Opsional)" />
+    <input id="regBank" class="input" placeholder="Bank (Opsional)" />
+    <input id="regNorek" class="input" placeholder="No Rekening (Opsional)" />
     <button id="btnRegister" class="btn-primary" style="margin-top:6px">DAFTAR</button>
     <button id="btnRegCancel" class="btn-secondary" style="margin-top:8px">BATAL</button>
-    <div id="regError" style="margin-top:10px;color:#e74c3c;font-size:14px;display:none"></div>
+    <div id="regError" class="error-box" style="display:none;"></div>
   </div>
 </div>
 
+<!-- APLIKASI UTAMA -->
 <div id="mainApp" class="app" style="display:none;">
 
+  <!-- Panel Atas: header + chart besar -->
   <div class="panel" style="padding:12px;">
     <div class="header">
       <div class="left">
@@ -114,7 +122,7 @@
 
       <div style="text-align:right">
         <div style="font-size:12px;color:#9aa0a6">Saldo Real:</div>
-        <div class="saldo" id="saldoText">Rp 140.000.000</div>
+        <div class="saldo" id="saldoText">Rp 0</div>
       </div>
     </div>
 
@@ -133,6 +141,7 @@
     </div>
   </div>
 
+  <!-- Bawah: kontrol lengket -->
   <div class="controls-area">
     <div class="card">
       <div class="top-controls">
@@ -178,37 +187,53 @@
 
 <script>
 /* ============================
-   CONFIG: API endpoint (your Apps Script WebApp)
+   KONFIGURASI: API endpoint (Apps Script WebApp)
+   
+   *** URL API DARI PENGGUNA:
+   https://script.google.com/macros/s/AKfycbzbEiM477-FuC3Cz_TiQMQ2q0FC6Ye81Fr7wzKDANQMyMYYstG703vilVV2Gluf_N2i/exec
    ============================ */
-const API = "https://script.google.com/macros/s/AKfycbyoWvLIBzuLLeSn9EuUvKUesiIKlaE6x8q8P2aWbBMSSakzR5TVl0ASOLfb8xUgOEsD/exec";
+const API = "https://script.google.com/macros/s/AKfycbzbEiM477-FuC3Cz_TiQMQ2q0FC6Ye81Fr7wzKDANQMyMYYstG703vilVV2Gluf_N2i/exec";
 
-/* Helper: POST JSON to API 
-   FIX: Removed explicit Content-Type header to avoid CORS errors on GitHub 
-*/
+/* Helper: POST JSON ke API dengan retry (Exponential Backoff) */
 async function apiPost(body){
-  try{
-    const res = await fetch(API, {
-      method: 'POST',
-      // headers: { 'Content-Type': 'application/json' }, // <-- Dihapus agar work di GitHub
-      body: JSON.stringify(body),
-      mode: 'cors'
-    });
-    return await res.json();
-  }catch(e){
-    console.error('apiPost error', e);
-    return null;
-  }
-}
+  let attempt = 0;
+  const maxAttempts = 3;
+  
+  while (attempt < maxAttempts) {
+    try{
+      const res = await fetch(API, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        // Mode 'cors' diperlukan agar fetch API berfungsi untuk domain lintas asal
+        mode: 'cors' 
+      });
 
-/* Helper: GET with query */
-async function apiGet(action, paramsObj){
-  try{
-    const params = new URLSearchParams({ action, ...(paramsObj||{}) });
-    const res = await fetch(API + "?" + params.toString(), { method:'GET', mode:'cors' });
-    return await res.json();
-  }catch(e){
-    console.error('apiGet error', e);
-    return null;
+      // 1. Cek response.ok (Status 200-299)
+      if (!res.ok) {
+        // Ini menangani error server (misal: 404, 500)
+        throw new Error(`Status HTTP ${res.status}: ${res.statusText}. Mungkin Apps Script Anda gagal dalam eksekusi (Internal Server Error)`);
+      }
+
+      // 2. Coba parse JSON
+      const text = await res.text();
+      // Apps Script yang gagal (tapi tetap mengembalikan status 200) sering mengembalikan HTML atau string kosong
+      if (!text || !text.startsWith('{')) {
+          throw new Error('Respons bukan JSON yang valid. Pastikan Apps Script Anda mengembalikan ContentService.MimeType.JSON dan tidak ada Error di Code.gs.');
+      }
+      
+      const result = JSON.parse(text);
+      return result;
+
+    }catch(e){
+      console.error(`apiPost attempt ${attempt + 1} failed:`, e.message);
+      if (attempt === maxAttempts - 1) {
+        // Pada percobaan terakhir, lempar error yang akan ditangkap di fungsi pemanggil
+        throw new Error(`Koneksi Gagal ke API setelah ${maxAttempts} percobaan. KEMUNGKINAN TERBESAR: Izin Web App Apps Script BUKAN 'Anyone' atau URL SALAH. Error Asli: ${e.message}`);
+      }
+      // Tunggu sebelum retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      attempt++;
+    }
   }
 }
 
@@ -243,8 +268,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
   // app state
   let currentUser = null;
-  let saldo = 140000000;
-  const formatIDR = v => 'Rp ' + Number(v).toLocaleString('id-ID');
+  let saldo = 0; // Saldo awal harus 0, akan diupdate dari API
+  const formatIDR = v => 'Rp ' + Number(v).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 
   // polling
   let pollIntervalId = null;
@@ -253,8 +278,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
   // init display
   saldoText.textContent = formatIDR(saldo);
 
-  /* ---------------- CHART SETUP (unchanged) ---------------- */
-  const hargaPerMenit = [74.996,75.001,74.998,75.005,75.012,75.008,75.004,74.999,75.003,75.008,75.015,75.020,75.025,75.022,75.018,75.014,75.010,75.006,75.009,75.014,75.011,90000,175.000,50000,74.990,74.987,74.982,74.979,74.975,74.970,74.965,74.968,74.972,74.977,74.981,74.985,74.990,74.985,74.980,74.976,74.972,74.978,74.983,74.975,74.970,74.965,74.971,74.977,74.980,74.985,74.992,74.996,75.000,75.005,75.011,75.018,75.023,75.028,75.025,75.021];
+  /* ---------------- SETUP CHART (tidak berubah) ---------------- */
+  const hargaPerMenit = [74.996,75.001,74.998,75.005,75.012,75.008,75.004,74.999,75.003,75.008,75.015,75.020,75.025,75.022,75.018,75.014,75.010,75.006,75.009,75.014,75.011,75.005,75.000,74.995,74.990,74.987,74.982,74.979,74.975,74.970,74.965,74.968,74.972,74.977,74.981,74.985,74.990,74.985,74.980,74.976,74.972,74.978,74.983,74.975,74.970,74.965,74.971,74.977,74.980,74.985,74.992,74.996,75.000,75.005,75.011,75.018,75.023,75.028,75.025,75.021];
 
   const ctx = document.getElementById('chartCanvas').getContext('2d');
   const customOverlayPlugin = {
@@ -268,7 +293,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
       ctx.save();
       if(oX!==null && cX!==null){
         ctx.fillStyle='rgba(241,196,15,0.12)';
-        ctx.fillRect(Math.min(oX,cX), chartArea.top, Math.abs(oX,cX), chartArea.bottom-chartArea.top);
+        ctx.fillRect(Math.min(oX,cX), chartArea.top, Math.abs(oX - cX), chartArea.bottom-chartArea.top);
       }
       ctx.restore();
       ctx.save();
@@ -344,23 +369,24 @@ window.addEventListener('DOMContentLoaded', ()=>{
   function forceLoss(dir){
     const cur = chart.data.datasets[0].data.slice(-1)[0] || getBaseMinute();
     let final; const offset = 0.03 + Math.random()*0.04;
+    // Pilihan hasil final adalah loss, untuk tujuan simulasi di canvas
     if(dir === 'naik') final = (openPrice != null ? openPrice : cur) - offset;
     else final = (openPrice != null ? openPrice : cur) + offset;
     startSmoothLoss(final);
     return final;
   }
 
-  /* TRADING LOGIC (kept) */
+  /* LOGIKA TRADING (tidak berubah) */
   let tradingActive=false, openPrice=null, openIndex=null, closeIndex=null, countdown=60, timer=null, chosenAmount=0;
   function pickAmount(){ const q = Number(quickAmount.value || 0); const m = Number(manualAmount.value || 0); return m>0?m:(q>0?q:0); }
   function setDisabled(x){ btnUp.disabled = x; btnDown.disabled = x; quickAmount.disabled = x; manualAmount.disabled = x; intervalSelect.disabled = x; }
 
   async function startTrade(dir){
-    if(tradingActive) return alert('Transaksi masih berjalan');
-    if(!currentUser) return alert('Silakan login terlebih dahulu.');
+    if(tradingActive) { console.error('Transaksi masih berjalan'); return; }
+    if(!currentUser) { console.error('Silakan login terlebih dahulu.'); return; }
     chosenAmount = pickAmount();
-    if(!chosenAmount) return alert('Nominal belum dipilih');
-    if(chosenAmount>saldo) return alert('Saldo tidak cukup');
+    if(!chosenAmount) { console.error('Nominal belum dipilih'); return; }
+    if(chosenAmount>saldo) { console.error('Saldo tidak cukup'); return; }
 
     const last = chart.data.datasets[0].data.slice(-1)[0];
     openPrice = last; openIndex = chart.data.labels.length - 1; closeIndex = null;
@@ -389,8 +415,9 @@ window.addEventListener('DOMContentLoaded', ()=>{
         clearInterval(timer); timer = null;
         const final = forceLoss(dir);
         saldo -= chosenAmount;
+        
         statusBox.classList.remove('result-win'); statusBox.classList.add('result-lose');
-        statusBox.textContent = `KALAH -${formatIDR(chosenAmount)} — ${final.toFixed(3)}`;
+        statusBox.textContent = `KALAH -${formatIDR(chosenAmount)} — Tutup @${final.toFixed(3)}`;
         lastResult.textContent = 'KALAH';
         saldoText.textContent = formatIDR(saldo);
         txtClose.textContent = final.toFixed(3);
@@ -400,11 +427,14 @@ window.addEventListener('DOMContentLoaded', ()=>{
         tradingActive = false;
         setDisabled(false);
 
-        // save saldo to server (via API)
+        // simpan saldo ke server (via API)
         if(currentUser){
-          const res = await apiPost({ action: 'updateSaldo', username: currentUser, saldo: saldo });
-          // ignore failure silently (UI already updated)
-          if(!res) console.warn('updateSaldo failed/no response');
+          try {
+            const res = await apiPost({ action: 'updateSaldo', username: currentUser, saldo: saldo });
+            if(res && res.status !== 'success') console.error('Gagal update saldo di server:', res.pesan);
+          } catch (e) {
+            console.error('API Error saat update saldo:', e.message);
+          }
         }
       }
     },1000);
@@ -424,74 +454,103 @@ window.addEventListener('DOMContentLoaded', ()=>{
   }
   updateTimeLine(); setInterval(updateTimeLine,1000);
 
-  // ------------ LOGIN / SERVER INTERACTION ------------
-  function showErrorLogin(msg){ loginError.style.display = 'block'; loginError.textContent = msg || 'Username / Password salah!'; }
+  // ------------ INTERAKSI LOGIN / SERVER ------------
+  function showErrorLogin(msg){ loginError.style.display = 'block'; loginError.textContent = msg; }
   function hideErrorLogin(){ loginError.style.display = 'none'; }
-
+  function showErrorRegister(msg){ regError.style.display = 'block'; regError.textContent = msg; }
+  
+  function setButtonState(btn, isLoading, text){
+      btn.disabled = isLoading;
+      if(text) btn.textContent = isLoading ? 'LOADING...' : text;
+  }
+  
   async function startPolling(){
     stopPolling();
     pollIntervalId = setInterval(async ()=> {
       if(!currentUser) return;
-      const res = await apiPost({ action: 'getUserData', username: currentUser });
-      if(res && (res.status === 'success' || res.status === 'sukses')){
-        const newSaldo = Number(res.saldo) || 0;
-        if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
+      try{
+        const res = await apiPost({ action: 'getUserData', username: currentUser });
+        if(res && res.status === 'success'){
+          const newSaldo = Number(res.saldo) || 0;
+          if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
+        } else if (res && res.status === 'failed') {
+             // Jika API bilang user tidak ditemukan
+            window.logout(); 
+        }
+      } catch(e) {
+          console.error("Polling Error:", e.message);
       }
     }, POLL_INTERVAL_MS);
   }
   function stopPolling(){ if(pollIntervalId){ clearInterval(pollIntervalId); pollIntervalId = null; } }
 
-  // login handler using API POST -> action: login
+  // handler login menggunakan API POST -> action: login
   async function loginUser(){
     hideErrorLogin();
     const username = (loginUserInput.value || '').trim();
     const password = (loginPassInput.value || '').trim();
     if(!username || !password){ showErrorLogin('Isi username dan password.'); return; }
-    btnLogin.disabled = true; btnLogin.textContent = 'LOADING...';
-    const res = await apiPost({ action: 'login', username, password });
-    btnLogin.disabled = false; btnLogin.textContent = 'LOGIN';
-    if(res && (res.status === 'success' || res.status === 'sukses')){
-      currentUser = res.username || username;
-      if(typeof res.saldo !== 'undefined' && res.saldo !== null) saldo = Number(res.saldo) || saldo;
-      saldoText.textContent = formatIDR(saldo);
-      try{ localStorage.setItem('tredio_user', currentUser); }catch(e){}
-      loginScreen.style.display = 'none'; mainApp.style.display = 'block';
-      startPolling();
-    } else {
-      showErrorLogin(res && res.pesan ? res.pesan : 'Login gagal.');
+    
+    setButtonState(btnLogin, true, 'LOGIN');
+    setButtonState(btnOpenRegister, true, 'REGISTER');
+    
+    try {
+        const res = await apiPost({ action: 'login', username, password });
+        
+        if(res && res.status === 'success'){
+          currentUser = res.username || username;
+          saldo = Number(res.saldo) || 0;
+          saldoText.textContent = formatIDR(saldo);
+          try{ localStorage.setItem('tredio_user', currentUser); }catch(e){}
+          loginScreen.style.display = 'none'; mainApp.style.display = 'flex'; // Gunakan flex untuk layout App
+          startPolling();
+        } else {
+          showErrorLogin(res && res.pesan ? res.pesan : 'Login gagal. Cek kredensial Anda.');
+        }
+    } catch (e) {
+        // Pesan error koneksi yang lebih spesifik dari apiPost
+        showErrorLogin(`Gagal Koneksi API: ${e.message}`);
+    } finally {
+        setButtonState(btnLogin, false, 'LOGIN');
+        setButtonState(btnOpenRegister, false, 'REGISTER');
     }
   }
   btnLogin.addEventListener('click', loginUser);
 
-  // refresh UI every 3s (keeps saldo updated)
-  setInterval(async ()=>{
-    if(!currentUser) return;
-    const res = await apiPost({ action: 'getUserData', username: currentUser });
-    if(res && (res.status === 'success' || res.status === 'sukses')){
-      const newSaldo = Number(res.saldo) || 0;
-      if(newSaldo !== saldo){ saldo = newSaldo; saldoText.textContent = formatIDR(saldo); }
-    }
-    chart.update('none');
-  }, 3000);
+  // Auto-login saat load
+  async function attemptAutoLogin() {
+    try{
+      const saved = localStorage.getItem('tredio_user');
+      if(saved){
+        setButtonState(btnLogin, true, 'LOGIN');
+        setButtonState(btnOpenRegister, true, 'REGISTER');
 
-  // Auto-login on load using localStorage (works with GitHub Pages)
-  try{
-    const saved = localStorage.getItem('tredio_user');
-    if(saved){
-      currentUser = saved;
-      const res = await apiPost({ action: 'getUserData', username: currentUser });
-      if(res && (res.status === 'success' || res.status === 'sukses')){
-        saldo = Number(res.saldo) || saldo;
-        saldoText.textContent = formatIDR(saldo);
-        loginScreen.style.display = 'none'; mainApp.style.display = 'block';
-        startPolling();
-      } else {
-        currentUser = null; localStorage.removeItem('tredio_user');
+        const res = await apiPost({ action: 'getUserData', username: saved });
+
+        setButtonState(btnLogin, false, 'LOGIN');
+        setButtonState(btnOpenRegister, false, 'REGISTER');
+        
+        if(res && res.status === 'success'){
+          currentUser = saved;
+          saldo = Number(res.saldo) || 0;
+          saldoText.textContent = formatIDR(saldo);
+          loginScreen.style.display = 'none'; mainApp.style.display = 'flex';
+          startPolling();
+        } else {
+          currentUser = null; localStorage.removeItem('tredio_user');
+        }
       }
+    }catch(e){ 
+      console.warn('autologin error', e.message); 
+      // Jika auto-login gagal karena masalah koneksi
+      showErrorLogin(`Gagal Koneksi API saat Auto-Login: ${e.message}`);
+      setButtonState(btnLogin, false, 'LOGIN');
+      setButtonState(btnOpenRegister, false, 'REGISTER');
     }
-  }catch(e){ console.warn('autologin error', e); }
+  }
+  attemptAutoLogin();
 
-  // REGISTER logic (calls API -> action: register)
+  // Logika REGISTER
   btnOpenRegister.addEventListener('click', ()=>{ registerPopup.style.display = 'flex'; regError.style.display = 'none'; });
   btnRegCancel.addEventListener('click', ()=>{ registerPopup.style.display = 'none'; });
 
@@ -502,21 +561,48 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const h = (document.getElementById('regHp').value || '').trim();
     const b = (document.getElementById('regBank').value || '').trim();
     const n = (document.getElementById('regNorek').value || '').trim();
-    if(!u || !p){ regError.textContent = 'Username dan Password wajib.'; regError.style.display = 'block'; return; }
-    btnRegister.disabled = true; btnRegister.textContent = 'PROSES...';
-    const res = await apiPost({ action: 'register', username: u, password: p, email: e, hp: h, bank: b, norek: n });
-    btnRegister.disabled = false; btnRegister.textContent = 'DAFTAR';
-    if(res && (res.status === 'success' || res.status === 'sukses')){
-      registerPopup.style.display = 'none';
-      alert('Registrasi berhasil. Silakan login.');
-    } else {
-      regError.textContent = res && res.pesan ? res.pesan : 'Gagal registrasi';
-      regError.style.display = 'block';
+    
+    if(!u || !p){ showErrorRegister('Username dan Password wajib diisi.'); return; }
+    
+    setButtonState(btnRegister, true, 'DAFTAR');
+
+    try {
+        const res = await apiPost({ action: 'register', username: u, password: p, email: e, hp: h, bank: b, norek: n });
+        
+        if(res && res.status === 'success'){
+          registerPopup.style.display = 'none';
+          console.log('Registrasi berhasil. Saldo awal telah diisikan. Silakan login.');
+          document.getElementById('loginUser').value = u; 
+          document.getElementById('loginPass').value = p; 
+          hideErrorLogin();
+          // Clear form register
+          document.getElementById('regUser').value = '';
+          document.getElementById('regPass').value = '';
+          document.getElementById('regEmail').value = '';
+          document.getElementById('regHp').value = '';
+          document.getElementById('regBank').value = '';
+          document.getElementById('regNorek').value = '';
+        } else {
+          showErrorRegister(res && res.pesan ? res.pesan : 'Gagal registrasi. Coba username lain.');
+        }
+    } catch (e) {
+        showErrorRegister(`Gagal Koneksi API: ${e.message}`);
+    } finally {
+        setButtonState(btnRegister, false, 'DAFTAR');
     }
   });
 
   // Logout helper
-  window.logout = function(){ try{ localStorage.removeItem('tredio_user'); }catch(e){} stopPolling(); currentUser = null; mainApp.style.display = 'none'; loginScreen.style.display = 'flex'; };
+  window.logout = function(){ 
+      try{ localStorage.removeItem('tredio_user'); }catch(e){} 
+      stopPolling(); 
+      currentUser = null; 
+      mainApp.style.display = 'none'; 
+      loginScreen.style.display = 'flex'; 
+      hideErrorLogin();
+      document.getElementById('loginUser').value = '';
+      document.getElementById('loginPass').value = '';
+  };
 
 });
 </script>
